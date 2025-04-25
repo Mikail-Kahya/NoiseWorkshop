@@ -7,6 +7,7 @@ RWTexture2D<float4> Noise;
 float NoiseScale;
 int NoiseWidth;
 int NoiseHeight;
+bool NoiseQuinticInterpolation;
 
 float HashFloat(float2 n)
 {
@@ -18,7 +19,9 @@ float ValueNoise(float2 n)
     float2 fPos = frac(n); // removes everything before the comma
     float2 iPos = floor(n);
 
-    fPos = fPos * fPos * fPos * (fPos * (fPos * 6.0 - 15) + 10); // quentic 
+    fPos = NoiseQuinticInterpolation ?
+				fPos * fPos * fPos * (fPos * (fPos * 6.0 - 15) + 10) : // quintic 
+				fPos * fPos * (3 - 2 * fPos); // cubic
 
     return lerp(    lerp(HashFloat(iPos + float2(0, 0)), HashFloat(iPos + float2(1, 0)), fPos.x),
 					lerp(HashFloat(iPos + float2(0, 1)), HashFloat(iPos + float2(1, 1)), fPos.x),

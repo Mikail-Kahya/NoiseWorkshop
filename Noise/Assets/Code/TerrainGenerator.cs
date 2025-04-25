@@ -7,6 +7,7 @@ public class TerrainGenerator : MonoBehaviour
     public int height = 1024;
 
     public float noiseScale = 10.0f;
+    public bool useQuinticInterpolation = true;
 
     private RenderTexture noise_textute;
     private uint threadSizeX;
@@ -30,6 +31,7 @@ public class TerrainGenerator : MonoBehaviour
         computeShader.SetInt("NoiseWidth", width);
         computeShader.SetInt("NoiseHeight", height);
         computeShader.SetFloat("NoiseScale", noiseScale);
+        computeShader.SetBool("NoiseQuinticInterpolation", useQuinticInterpolation);
 
         // threadSizeZ is not implements as it's not needed right now
         computeShader.Dispatch(0, (int)(width / threadSizeX), (int)(height / threadSizeY), 1);
