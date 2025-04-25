@@ -5,9 +5,23 @@ public class TerrainGenerator : MonoBehaviour
     public ComputeShader computeShader;
     public int width = 1024;
     public int height = 1024;
-
     public float noiseScale = 10.0f;
     public bool useQuinticInterpolation = true;
+
+    public enum NoiseType
+    {
+        value,
+        gradient,
+        voronoi
+    };
+    public NoiseType noiseType = NoiseType.value;
+
+    public enum HashType
+    {
+        hashInt,
+        hashFloat
+    };
+    public HashType hashType = HashType.hashInt;
 
     private RenderTexture noise_textute;
     private uint threadSizeX;
@@ -32,6 +46,8 @@ public class TerrainGenerator : MonoBehaviour
         computeShader.SetInt("NoiseHeight", height);
         computeShader.SetFloat("NoiseScale", noiseScale);
         computeShader.SetBool("NoiseQuinticInterpolation", useQuinticInterpolation);
+        computeShader.SetInt("NoiseType", (int) noiseType);
+        computeShader.SetInt("HashType", (int) hashType);
 
         // threadSizeZ is not implements as it's not needed right now
         computeShader.Dispatch(0, (int)(width / threadSizeX), (int)(height / threadSizeY), 1);

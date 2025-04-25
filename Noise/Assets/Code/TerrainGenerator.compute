@@ -8,10 +8,53 @@ float NoiseScale;
 int NoiseWidth;
 int NoiseHeight;
 bool NoiseQuinticInterpolation;
+int HashType;
+int NoiseType;
+
+#define NOISE_TYPE_VALUE 0
+#define NOISE_TYPE_GRADIENT 1
+#define NOISE_TYPE_VORONOI 2
+
+#define HASH_INT 0
+#define HASH_FLOAT 1
+
+uint xxhash32(inout uint p)
+{
+    const uint PRIME32_2 = 2246822519U, PRIME32_3 = 3266489917U;
+    const uint PRIME32_4 = 668265263U, PRIME32_5 = 374761393U;
+    uint h32 = p + PRIME32_5;
+    h32 = PRIME32_4 * ((h32 << 17) | (h32 >> (32 - 17)));
+    h32 = PRIME32_2 * (h32 ^ (h32 >> 15));
+    h32 = PRIME32_3 * (h32 ^ (h32 >> 13));
+    p = h32 ^ (h32 >> 16);
+    return p;
+}
+
+float HashInt(float2 n)
+{
+    uint val = uint(n.x * 29 + n.y * 47 + 83);
+    return float(xxhash32(val)) / 4294967296.0;
+}
 
 float HashFloat(float2 n)
 {
     return frac(sin(n.x + n.y * 543.0) * 43758.5453123);
+}
+
+float Hash(float2 n)
+{
+    float val = 0.0;
+	switch (HashType)
+	{
+		case HASH_INT:
+            val = HashInt(n);
+			break;
+        case HASH_FLOAT:
+            val = HashFloat(n);
+            break;
+    }
+
+    return val;
 }
 
 float ValueNoise(float2 n)
@@ -23,9 +66,33 @@ float ValueNoise(float2 n)
 				fPos * fPos * fPos * (fPos * (fPos * 6.0 - 15) + 10) : // quintic 
 				fPos * fPos * (3 - 2 * fPos); // cubic
 
-    return lerp(    lerp(HashFloat(iPos + float2(0, 0)), HashFloat(iPos + float2(1, 0)), fPos.x),
-					lerp(HashFloat(iPos + float2(0, 1)), HashFloat(iPos + float2(1, 1)), fPos.x),
+    return lerp(    lerp(Hash(iPos + float2(0, 0)), Hash(iPos + float2(1, 0)), fPos.x),
+					lerp(Hash(iPos + float2(0, 1)), Hash(iPos + float2(1, 1)), fPos.x),
 					fPos.y);
+}
+
+#define PI2 6.283185307179586476925286766559
+
+float2 GetGradient(float2 pos)
+{
+    float rnd = Hash(pos);
+    return float2(sin(rnd * PI2), cos(rnd * PI2));
+}
+
+float GradientNoise(float2 pos)
+{
+    float2 fPos = frac(pos); // removes everything before the comma
+    float2 iPos = floor(pos);
+
+    fPos = NoiseQuinticInterpolation ?
+				fPos * fPos * fPos * (fPos * (fPos * 6.0 - 15) + 10) : // quintic 
+				fPos * fPos * (3 - 2 * fPos); // cubic
+
+    return (lerp(   lerp(   dot(GetGradient(iPos + float2(0, 0)), fPos - float2(0, 0)), 
+							dot(GetGradient(iPos + float2(1, 0)), fPos - float2(1, 0)), fPos.x),
+					lerp(   dot(GetGradient(iPos + float2(0, 1)), fPos - float2(0, 1)),
+							dot(GetGradient(iPos + float2(1, 1)), fPos - float2(1, 1)), fPos.x),
+					fPos.y) + 1) * 0.5;
 }
 
 // Per pixel
@@ -34,6 +101,20 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
     float2 coord = float2(  id.x / (float) NoiseWidth, 
 							id.y / (float) NoiseHeight) * NoiseScale;
-    Noise[id.xy] = ValueNoise(coord);
+
+    float noise = 0.0;
+
+    switch (NoiseType)
+    {
+		case NOISE_TYPE_VALUE:
+            noise = ValueNoise(coord);
+    		break;
+        case NOISE_TYPE_GRADIENT:
+        	noise = GradientNoise(coord);
+        	break;
+        case NOISE_TYPE_VORONOI:
+            break;
+    }
+    Noise[id.xy] = noise;
     //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }
