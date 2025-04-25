@@ -17,7 +17,8 @@ float ValueNoise(float2 n)
 {
     float2 fPos = frac(n); // removes everything before the comma
     float2 iPos = floor(n);
-    float2 iPos2 = iPos + 1;
+
+    fPos = fPos * fPos * fPos * (fPos * (fPos * 6.0 - 15) + 10); // quentic 
 
     return lerp(    lerp(HashFloat(iPos + float2(0, 0)), HashFloat(iPos + float2(1, 0)), fPos.x),
 					lerp(HashFloat(iPos + float2(0, 1)), HashFloat(iPos + float2(1, 1)), fPos.x),
