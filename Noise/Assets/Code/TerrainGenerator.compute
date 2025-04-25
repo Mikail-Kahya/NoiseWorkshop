@@ -3,10 +3,21 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Result;
+RWTexture2D<float4> Noise;
+float NoiseScale;
+int NoiseWidth;
+int NoiseHeight;
+
+float HashFloat(float2 n)
+{
+    return frac(sin(n.x + n.y * 543.0) * 43758.5453123);
+}
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    float2 coord = float2(  id.x / (float) NoiseWidth, 
+							id.y / (float) NoiseHeight) * NoiseScale;
+    Noise[id.xy] = HashFloat(coord);
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }
