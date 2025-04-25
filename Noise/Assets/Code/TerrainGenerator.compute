@@ -13,11 +13,23 @@ float HashFloat(float2 n)
     return frac(sin(n.x + n.y * 543.0) * 43758.5453123);
 }
 
+float ValueNoise(float2 n)
+{
+    float2 fPos = frac(n); // removes everything before the comma
+    float2 iPos = floor(n);
+    float2 iPos2 = iPos + 1;
+
+    return lerp(    lerp(HashFloat(iPos + float2(0, 0)), HashFloat(iPos + float2(1, 0)), fPos.x),
+					lerp(HashFloat(iPos + float2(0, 1)), HashFloat(iPos + float2(1, 1)), fPos.x),
+					fPos.y);
+}
+
+// Per pixel
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     float2 coord = float2(  id.x / (float) NoiseWidth, 
 							id.y / (float) NoiseHeight) * NoiseScale;
-    Noise[id.xy] = HashFloat(coord);
+    Noise[id.xy] = ValueNoise(coord);
     //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }
