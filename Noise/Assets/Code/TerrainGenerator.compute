@@ -7,6 +7,12 @@ RWTexture2D<float4> Noise;
 float NoiseScale;
 int NoiseWidth;
 int NoiseHeight;
+
+int OctaveCount;
+float Lacunarity;
+float Gain;
+
+// Swapping
 bool NoiseQuinticInterpolation;
 int HashType;
 int NoiseType;
@@ -18,6 +24,9 @@ int NoiseType;
 #define HASH_INT 0
 #define HASH_FLOAT 1
 
+// =========================
+// HASH
+// =========================
 uint xxhash32(inout uint p)
 {
     const uint PRIME32_2 = 2246822519U, PRIME32_3 = 3266489917U;
@@ -57,6 +66,10 @@ float Hash(float2 n)
     return val;
 }
 
+// =========================
+// VALUE
+// =========================
+
 float ValueNoise(float2 n)
 {
     float2 fPos = frac(n); // removes everything before the comma
@@ -71,6 +84,9 @@ float ValueNoise(float2 n)
 					fPos.y);
 }
 
+// =========================
+// GRADIENT
+// =========================
 #define PI2 6.283185307179586476925286766559
 
 float2 GetGradient(float2 pos)
@@ -95,26 +111,56 @@ float GradientNoise(float2 pos)
 					fPos.y) + 1) * 0.5;
 }
 
-// Per pixel
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
-{
-    float2 coord = float2(  id.x / (float) NoiseWidth, 
-							id.y / (float) NoiseHeight) * NoiseScale;
+// =========================
+// fBm
+// =========================
 
+float GetNoise(float2 coord)
+{
     float noise = 0.0;
 
     switch (NoiseType)
     {
-		case NOISE_TYPE_VALUE:
+        case NOISE_TYPE_VALUE:
             noise = ValueNoise(coord);
-    		break;
+            break;
         case NOISE_TYPE_GRADIENT:
-        	noise = GradientNoise(coord);
-        	break;
+            noise = GradientNoise(coord);
+            break;
         case NOISE_TYPE_VORONOI:
             break;
     }
-    Noise[id.xy] = noise;
+
+    return noise;
+}
+
+float GetfBm(float2 coord)
+{
+    float value = 0.0;
+    float freq = 1.0;
+    float amplitude = 1.0;
+    float accumulated = 1.0;
+    for (int oct = 0; oct < clamp(OctaveCount, 1, 15); oct++)
+    {
+        float noiseOctave = GetNoise(coord * freq) * amplitude;
+        accumulated = accumulated + amplitude;
+        freq = freq * Lacunarity;
+        amplitude = amplitude * Gain;
+        value = value + noiseOctave;
+    }
+
+    return value / accumulated;
+}
+
+// Per pixel
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    //Noise[id.xy] = 1.0f;
+    //return;
+    float2 coord = float2(  id.x / (float) NoiseWidth, 
+							id.y / (float) NoiseHeight) * NoiseScale;
+
+    Noise[id.xy] = GetfBm(coord);
     //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }

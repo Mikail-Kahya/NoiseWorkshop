@@ -339,6 +339,12 @@ MonoBehaviour:
   width: 1024
   height: 1024
   noiseScale: 10
+  octaveCount: 6
+  lacunarity: 2
+  gain: 1
+  useQuinticInterpolation: 1
+  noiseType: 0
+  hashType: 0
 --- !u!1 &2076296055
 GameObject:
   m_ObjectHideFlags: 0
