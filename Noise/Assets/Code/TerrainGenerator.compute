@@ -1,9 +1,18 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
+#pragma kernel CSNormal
+#pragma kernel CSAO
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Noise;
+RWTexture2D<float> Noise;
+RWTexture2D<float4> Normal;
+RWTexture2D<float> AO;
+
+Texture2D<float> NoiseRead;
+float NormalIntensity;
+float AOIntensity;
+
 float NoiseScale;
 int NoiseWidth;
 int NoiseHeight;
@@ -163,4 +172,33 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     Noise[id.xy] = GetfBm(coord);
     //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+}
+
+
+[numthreads(8,8,1)]
+void CSNormal (uint3 id : SV_DispatchThreadID)
+{
+    float3 normal = float3(0, 0, 1);
+    float h00 = NoiseRead[id.xy - int2(-1, -1)].x;
+    float h10 = NoiseRead[id.xy - int2( 0, -1)].x;
+    float h20 = NoiseRead[id.xy - int2( 1, -1)].x;
+    float h01 = NoiseRead[id.xy - int2(-1,  0)].x;
+    float h21 = NoiseRead[id.xy - int2( 1,  0)].x;
+    float h02 = NoiseRead[id.xy - int2(-1,  1)].x;
+    float h12 = NoiseRead[id.xy - int2( 0,  1)].x;
+    float h22 = NoiseRead[id.xy - int2( 1,  1)].x;
+
+    float deltaX = (h00 + 2 * h01 + h02) - (h20 + 2 * h21 + h22);
+    float deltaY = (h00 + 2 * h10 + h20) - (h02 + 2 * h12 + h22);
+
+    normal = normalize(float3(deltaX * NormalIntensity, deltaY * NormalIntensity, 1.0));
+
+    Normal[id.xy] = float4(normal, 0);
+}
+
+[numthreads(8,8,1)]
+void CSAO (uint3 id : SV_DispatchThreadID)
+{
+    float ao = 1.0;
+    AO[id.xy] = ao;
 }
